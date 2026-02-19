@@ -20,12 +20,12 @@ jobs:
       - name: Build Solution
         shell: cmd
         run: |
+          set CL=%CL% /D_SILENCE_AMP_DEPRECATION_WARNINGS
           msbuild CPP\RaytrAMP.sln ^
             /p:Configuration=Release ^
             /p:Platform=x64 ^
             /p:WindowsTargetPlatformVersion=10.0 ^
             /p:PlatformToolset=v143 ^
-            /p:AdditionalOptions="/D_SILENCE_AMP_DEPRECATION_WARNINGS %(AdditionalOptions)"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
