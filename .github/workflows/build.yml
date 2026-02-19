@@ -2,6 +2,9 @@ name: Build RaytrAMP
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -16,9 +19,9 @@ jobs:
 
       - name: Build Solution
       run: msbuild CPP\RaytrAMP.sln `
-            /p:Configuration=Release `
-            /p:Platform=x64 `
-            /p:WindowsTargetPlatformVersion=10.0
+           /p:Configuration=Release `
+           /p:Platform=x64 `
+           /p:WindowsTargetPlatformVersion=10.0
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -27,3 +30,4 @@ jobs:
           path: |
             **\Release\*.exe
             **\x64\Release\*.exe
+
