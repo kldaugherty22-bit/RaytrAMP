@@ -79,16 +79,19 @@ public:
 
 			ray.dist_ = 0;
 
+			const T epsBasis = (T)1e-8;
+
 			while( isHitAtAll && ray.refCount_ < 10 )
 			{
 				isHitAtAll = false;
 
-				U32 stackArray[ 32 ];
+				// Increased from 32 to 64 and protected below.
+				U32 stackArray[ 64 ];
 				I32 stackIdx = 0;
 				stackArray[ stackIdx ] = 0;
 
-				T hitDistMin = 1E32;
-				U32 hitIdx = -1;
+				T hitDistMin = (T)1E32;
+				U32 hitIdx = (U32)-1;
 				LUV::Vec3< T > hitPointMin;
 
 				while( stackIdx >= 0 )
@@ -103,6 +106,13 @@ public:
 						ray.CollisionWithBoundBox( node.data_.boundBox_, isHit, hitDist );
 						if( isHit && hitDist < hitDistMin )
 						{
+							// Prevent stack overwrite.
+							if( stackIdx + 2 >= 64 )
+							{
+								isHitAtAll = false;
+								break;
+							}
+
 							stackArray[ stackIdx++ ] = node.data_.leftChildIdx_;
 							stackArray[ stackIdx++ ] = node.data_.rightChildIdx_;
 						}
@@ -127,18 +137,75 @@ public:
 				{
 					const ReducedBvhNode< T >& node = bvhGpu[ index< 1 >( hitIdx ) ];
 					LUV::Vec3< T > hitNormal = node.trig_.GetNormal();
+
+					// Build a stable polarization basis.
 					LUV::Vec3< T > dirCrossNormal = LUV::Cross( ray.dir_, hitNormal );
+					T dirCrossNormalLen = LUV::Length( dirCrossNormal );
 
-					LUV::Vec3< T > polU = LUV::Unit( dirCrossNormal );
-					LUV::Vec3< T > polR = LUV::Unit( LUV::Cross( ray.dir_, polU ) );
+					LUV::Vec3< T > polU;
+					if( dirCrossNormalLen > epsBasis )
+					{
+						polU = dirCrossNormal / dirCrossNormalLen;
+					}
+					else
+					{
+						// Ray direction is parallel/nearly parallel to the surface normal.
+						// Pick a fallback axis that is not parallel to ray.dir_.
+						LUV::Vec3< T > helper;
+						if( fabs( ray.dir_[2] ) < (T)0.9 )
+						{
+							helper = LUV::Vec3< T >( (T)0.0, (T)0.0, (T)1.0 );
+						}
+						else
+						{
+							helper = LUV::Vec3< T >( (T)0.0, (T)1.0, (T)0.0 );
+						}
 
-					LUV::Vec3< T > refDir = LUV::Unit( ray.dir_ - hitNormal * ( 2.0 * LUV::Dot( ray.dir_, hitNormal ) ) );
+						LUV::Vec3< T > fallbackCross = LUV::Cross( helper, ray.dir_ );
+						T fallbackLen = LUV::Length( fallbackCross );
+
+						// If this somehow still degenerates, abandon this bounce safely.
+						if( fallbackLen <= epsBasis )
+						{
+							isHitAtAll = false;
+							break;
+						}
+
+						polU = fallbackCross / fallbackLen;
+					}
+
+					LUV::Vec3< T > polRCross = LUV::Cross( ray.dir_, polU );
+					T polRLen = LUV::Length( polRCross );
+					if( polRLen <= epsBasis )
+					{
+						isHitAtAll = false;
+						break;
+					}
+					LUV::Vec3< T > polR = polRCross / polRLen;
+
+					LUV::Vec3< T > refDirRaw = ray.dir_ - hitNormal * ( (T)2.0 * LUV::Dot( ray.dir_, hitNormal ) );
+					T refDirLen = LUV::Length( refDirRaw );
+					if( refDirLen <= epsBasis )
+					{
+						isHitAtAll = false;
+						break;
+					}
+					LUV::Vec3< T > refDir = refDirRaw / refDirLen;
 
 					LUV::Vec3< T > refPolU = -polU;
-					LUV::Vec3< T > refPolR = LUV::Cross( refDir, refPolU );
+
+					LUV::Vec3< T > refPolRCross = LUV::Cross( refDir, refPolU );
+					T refPolRLen = LUV::Length( refPolRCross );
+					if( refPolRLen <= epsBasis )
+					{
+						isHitAtAll = false;
+						break;
+					}
+					LUV::Vec3< T > refPolR = refPolRCross / refPolRLen;
 
 					T polCompU = LUV::Dot( ray.pol_, polU );
 					T polCompR = LUV::Dot( ray.pol_, polR );
+
 					ray.pos_ = hitPointMin;
 					ray.dir_ = refDir;
 					ray.pol_ = - polCompR * refPolR + polCompU * refPolU;
@@ -146,33 +213,10 @@ public:
 					ray.refNormal_ = hitNormal;
 					ray.refCount_ += 1;
 					ray.lastHitIdx_ = hitIdx;
-
-
-					//const ReducedBvhNode< T >& node = bvhGpu[ index< 1 >( hitIdx ) ];
-					//LUV::Vec3< T > hitNormal = node.trig_.GetNormal();
-					//LUV::Vec3< T > dirCrossNormal = LUV::Cross( ray.dir_, hitNormal );
-					//LUV::Vec3< T > polU = LUV::Unit( dirCrossNormal );
-					//LUV::Vec3< T > polR = LUV::Cross( polU, ray.dir_ );
-					//LUV::Vec3< T > refDir = LUV::Unit( ray.dir_ - hitNormal * ( 2.0 * LUV::Dot( ray.dir_, hitNormal ) ) );
-					//LUV::Vec3< T > refPolU = polU;
-					//LUV::Vec3< T > refPolR = LUV::Cross( refPolU, refDir );
-					//T polCompU = LUV::Dot( ray.pol_, polU );
-					//T polCompR = LUV::Dot( ray.pol_, polR );
-					//ray.pos_ = hitPointMin;
-					//ray.dir_ = refDir;
-					//ray.pol_ = - polCompR * refPolR + polCompU * refPolU;
-					//ray.dist_ += hitDistMin;
-					//ray.refNormal_ = hitNormal;
-					//ray.refCount_ += 1;
-					//ray.lastHitIdx_ = hitIdx;
 				}
-
 			}
-
 		});
-
 		rayGpu.synchronize();
-
 	}
 
 	void PhysicalOpticsIntegral( const RayPool< T >& rayPool, const Observation< T >& obs, T& rcs )
