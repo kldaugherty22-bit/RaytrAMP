@@ -152,7 +152,7 @@ public:
 						// Ray direction is parallel/nearly parallel to the surface normal.
 						// Pick a fallback axis that is not parallel to ray.dir_.
 						LUV::Vec3< T > helper;
-						if( fabs( ray.dir_[2] ) < (T)0.9 )
+						if( ray.dir_[2] < (T)0.9 && ray.dir_[2] > (T)-0.9 )
 						{
 							helper = LUV::Vec3< T >( (T)0.0, (T)0.0, (T)1.0 );
 						}
