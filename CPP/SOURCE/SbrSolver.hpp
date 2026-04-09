@@ -82,6 +82,12 @@ public:
 		U32 rayCountSqrt = (U32)( std::ceil( objWidthLambda * (T)( observation.rayPerLam_ ) + 1.0 ) ) + 1;
 		rayPool.Initialize( rayCountSqrt );
 		rayPool.ReGenerateRays( boundBox, observation.direction_, observation.polarization_ );
+		std::cout << "[PopulateRayPool] frequency = " << observation.frequency_
+				<< ", rayPerLam = " << observation.rayPerLam_
+				<< ", rayCountSqrt = " << rayCountSqrt
+				<< ", rayCount = " << rayPool.rayCount_
+				<< "\n";
+		std::cout.flush();
 	}
 
 	void ShootAndBounceRaysGpu( const ReducedBvhArray< T >& bvhArray, RayPool< T >& rayPool )
