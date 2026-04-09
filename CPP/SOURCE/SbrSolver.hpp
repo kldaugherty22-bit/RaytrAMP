@@ -45,9 +45,31 @@ public:
 
 		for( U32 idx = 0; idx < obsCount; ++idx )
 		{
+			std::cout << "[MonostaticRcsGpu] obs " << idx+1 << " / " << obsCount << ": before PopulateRayPool\n";
+			std::cout.flush();
+
 			PopulateRayPool( bvhArray, obsPtr[ idx ], rayPool );
+
+			std::cout << "[MonostaticRcsGpu] obs " << idx+1 << " / " << obsCount
+					<< ": after PopulateRayPool, rayCount = " << rayPool.rayCount_ << "\n";
+			std::cout.flush();
+
+			std::cout << "[MonostaticRcsGpu] obs " << idx+1 << " / " << obsCount << ": before ShootAndBounceRaysGpu\n";
+			std::cout.flush();
+
 			ShootAndBounceRaysGpu( bvhArray, rayPool );
+
+			std::cout << "[MonostaticRcsGpu] obs " << idx+1 << " / " << obsCount << ": after ShootAndBounceRaysGpu\n";
+			std::cout.flush();
+
+			std::cout << "[MonostaticRcsGpu] obs " << idx+1 << " / " << obsCount << ": before PhysicalOpticsIntegral\n";
+			std::cout.flush();
+
 			PhysicalOpticsIntegral( rayPool, obsPtr[ idx ], rcsPtr[ idx ] );
+
+			std::cout << "[MonostaticRcsGpu] obs " << idx+1 << " / " << obsCount
+					<< ": after PhysicalOpticsIntegral, rcs = " << rcsPtr[ idx ] << "\n";
+			std::cout.flush();
 		}
 	}
 
