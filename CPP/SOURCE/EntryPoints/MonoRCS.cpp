@@ -11,6 +11,8 @@
 
 int main( int argc, char *argv[] )
 {
+try 
+{
 	/*
 		Args (3 total):
 		[0]: executable name
@@ -19,7 +21,8 @@ int main( int argc, char *argv[] )
 		[2]: output .rcs file name
 	*/
 
-	std::cout << "## MakeRCS ##" << std::endl;
+	std::cout << "MonoRCS start\n";
+	std::cout.flush();
 
 	auto tStart = Clock::now();
 
@@ -34,28 +37,56 @@ int main( int argc, char *argv[] )
 		std::string obsFilePath = std::string( argv[2] );
 		std::string rcsFilePath = std::string( argv[3] );
 
+		std::cout << "Loading RBA: " << rbaPath << std::endl;
+		std::cout.flush();
 		ReducedBvhArray< Float > reducedBvhArray;
 		reducedBvhArray.Load( rbaFilePath );
+		std::cout << "Loaded RBA" << std::endl;;
+		std::cout.flush();
 
+		std::cout << "Loading OBS: " << obsPath << std::endl;;
+		std::cout.flush();
 		ObservationArray< Float > observationArray;
 		observationArray.Load( obsFilePath );
+		std::cout << "Loaded OBS " << std::endl;;
+		std::cout.flush();
 
+		std::cout << "Creating RCS Array: observationArray.obsCount_ = " << observationArray.obsCount_ << std::endl;;
+		std::cout.flush();
 		RcsArray< Float > rcsArray;
 		rcsArray.Initialize( observationArray.obsCount_ );
+		std::cout << "Loaded OBS " << std::endl;;
+		std::cout.flush();
 
+	 	std::cout << "Calling Monostatic RCS GPU in Solver" << std::endl;;
+		std::cout.flush();
 		SbrSolver< Float > sbrSolver;
 		sbrSolver.MonostaticRcsGpu( reducedBvhArray, observationArray, rcsArray );
+		std::cout << "Solver Finished" << std::endl;;
+		std::cout.flush();
 
+	 	std::cout << "Saving RCS File" << std::endl;;	
 		rcsArray.Save( rcsFilePath );
-		std::cout << rcsFilePath << std::endl;
+		std::cout << "RCS file saved to: " << rcsFilePath << std::endl;
 
 	}
 
 	auto tTotal = std::chrono::duration_cast< std::chrono::milliseconds >( Clock::now() - tStart ).count();
 
-	std::cout << "## Finished in " << tTotal << " ms. ##" << std::endl;
-
-
+	std::cout << "Finished in " << tTotal << " ms. ##" << std::endl;
+}
+catch (const std::exception& e)
+{
+    std::cout << "std::exception: " << e.what() << "\n";
+    std::cout.flush();
+    return 1;
+}
+catch (...)
+{
+    std::cout << "Unknown exception\n";
+    std::cout.flush();
+    return 1;
+}
 
 
 
